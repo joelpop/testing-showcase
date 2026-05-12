@@ -1,57 +1,117 @@
-# Skeleton Starter for Vaadin
+# Testing Showcase
 
-This project can be used as a starting point to create your own Vaadin application.
-It has the necessary dependencies and files to help you get started.
+A Vaadin application demonstrating two complementary testing approaches: **browserless unit tests** and **TestBench end-to-end tests**, using page objects that mirror each other.
 
-The best way to use it is via [vaadin.com/start](https://vaadin.com/start) - you can get only the necessary parts and choose the package naming you want to use.
-There is also a [getting started tutorial](https://vaadin.com/tutorials/getting-started-with-flow) based on this project.
+## The Application
 
-To access it directly from github, clone the repository and import the project to the IDE of your choice as a Maven project. You need to have Java 8 or 11 installed.
+A greeting app where users type a name and click **Say hello** (or press Enter). Each greeting appears as a card with a timestamp and a close button. Cards accumulate in a scrollable list, automatically scrolling the newest card into view.
 
-Run in development mode using `mvn jetty:run` and open [http://localhost:8080](http://localhost:8080) in the browser. If you are deploying to a test server via IDE integration, you probably need to enable `development` profile to get `vaadin-dev` dependency into the development deployment.
+## Running the Application
 
-If you want to run your app locally in the production mode, run `mvn jetty:run-war` or build a war file with `mvn package` and deploy it manually.
+```
+mvn jetty:run
+```
 
-### Running Integration Tests
+Opens at [http://localhost:8080](http://localhost:8080).
 
-Integration tests are implemented using [Vaadin TestBench](https://vaadin.com/testbench). The tests take a few minutes to run and are therefore included in a separate Maven profile. To run the tests using Google Chrome, execute
+## Project Structure
 
-`mvn verify -Pit`
+```
+src/main/java/com/example/application/
+├── model/
+│   └── Greeting.java            # Record: message + timestamp
+├── service/
+│   └── GreetService.java        # Resolves name, returns Greeting
+├── ui/
+│   ├── component/
+│   │   └── GreetingCard.java    # Composite<Card>: displays a Greeting
+│   └── view/
+│       └── MainView.java        # Root view: scrollable cards + input area
+└── AppShell.java
+```
 
-and make sure you have a valid TestBench license installed (you can obtain a 
-trial license from the [trial page](
-https://vaadin.com/trial)).
+---
 
-## Project structure
+## Testing
 
-The project follow Maven's [standard directory layout structure](https://maven.apache.org/guides/introduction/introduction-to-the-standard-directory-layout.html):
-- Under the `srs/main/java` are located Application sources
-    - `AppShell.java` configures the @PWA annotation making the application 
-      installable
-    - `GreetService.java` is a service class
-    - `MainView.java` is an example Vaadin view
-- Under the `srs/test` are located the TestBench test files
-- `src/main/resources` contains configuration files and static resources
-- The `frontend` directory in the root folder contains client-side 
-  dependencies and resource files. Example CSS styles used by the application 
-  are located under `frontend/themes`
+### Unit Tests — `mvn test`
 
-## Workspace.xml file
-IntelliJ IDEA uses `workspace.xml` file to cache user-specific project configuration.
-Tracking of local changes to the `workspace.xml` file can be prevented with the `git update-index --assume-unchanged .idea/workspace.xml` command.
-And to revert the setting: `git update-index --no-assume-unchanged .idea/workspace.xml`.
+No browser or servlet container required. Two kinds of unit tests:
 
-## Useful links
+#### Plain JUnit — model and service
 
-- Read the documentation at [vaadin.com/docs](https://vaadin.com/docs).
-- Follow the tutorials at [vaadin.com/tutorials](https://vaadin.com/tutorials).
-- Watch training videos and get certified at [vaadin.com/learn/training]( https://vaadin.com/learn/training).
-- Create new projects at [start.vaadin.com](https://start.vaadin.com/).
-- Search UI components and their usage examples at [vaadin.com/components](https://vaadin.com/components).
-- Find a collection of solutions to common use cases in [Vaadin Cookbook](https://cookbook.vaadin.com/).
-- Find Add-ons at [vaadin.com/directory](https://vaadin.com/directory).
-- Ask questions on [Stack Overflow](https://stackoverflow.com/questions/tagged/vaadin) or join our [Discord channel](https://discord.gg/MYFq5RTbBn).
-- Report issues, create pull requests in [GitHub](https://github.com/vaadin/).
+```
+src/test/java/com/example/application/
+└── ut/
+    ├── model/
+    │   └── GreetingTest.java        # Tests the Greeting record
+    └── service/
+        └── GreetServiceTest.java    # Tests GreetService name resolution
+```
 
-For a full Vaadin application example, there are more choices available also from [vaadin.com/start](https://vaadin.com/start) page.
+These are standard JUnit 5 tests with no Vaadin machinery involved.
 
+#### Browserless — UI logic
+
+```
+src/test/java/com/example/application/
+└── ut/
+    └── ui/
+        ├── component/
+        │   └── GreetingCardTester.java    # Page object (ComponentTester)
+        └── view/
+            ├── MainViewTester.java        # Page object (ComponentTester)
+            └── MainViewTest.java          # Browserless tests
+```
+
+`MainViewTest` extends `BrowserlessTest` (from `browserless-test-junit6`). Vaadin's test environment instantiates the UI, session, and routes in the JVM — no browser, no HTTP. Tests call `navigate(MainView.class)` to get a view instance, then interact through the page objects.
+
+Page objects extend `ComponentTester<T>` and expose the same high-level methods as their TestBench counterparts (`greet()`, `getCards()`, `getMessage()`, `close()`). Internally they use `find(ComponentType.class)` to locate child components in the server-side component tree, without relying on DOM structure.
+
+---
+
+### Integration Tests — `mvn verify -Pit`
+
+Requires Chrome. Starts Jetty on port **9090** (to avoid colliding with a running dev instance on 8080), runs tests, then stops Jetty.
+
+```
+src/test/java/com/example/application/
+└── it/
+    └── ui/
+        ├── component/
+        │   └── GreetingCardElement.java   # Page object (TestBenchElement)
+        └── view/
+            ├── MainViewElement.java       # Page object (TestBenchElement)
+            └── MainViewIT.java            # TestBench e2e tests
+```
+
+`MainViewIT` extends `BrowserTestBase`. Tests open the app in a real browser and interact through the page objects.
+
+TestBench page objects extend `TestBenchElement` and are annotated with `@Element("tag-name")`. They expose the same high-level API as the browserless page objects — same method names, different implementation. Internally they use `$(ElementType.class)` to query the live DOM.
+
+#### E2E-Only Test
+
+`greetButton_scrollsNewestCardIntoView` is only in `MainViewIT` — browserless tests have no concept of scroll position or viewport visibility. It adds enough cards to force scrolling, then verifies via JavaScript that the newest card is within the scroller's visible bounds.
+
+---
+
+## Similarities Between Both Approaches
+
+| | Browserless (`MainViewTest`) | TestBench (`MainViewIT`) |
+|---|---|---|
+| Page object base | `ComponentTester<T>` | `TestBenchElement` |
+| Method names | `greet()`, `getCards()`, `getMessage()`, `close()` | same |
+| Test cases | 6 shared cases | 6 shared + 1 e2e-only |
+| Element location | component tree (`find()`) | DOM (`$()`) |
+| Run with | `mvn test` | `mvn verify -Pit` |
+| Needs browser | no | yes (Chrome) |
+| Needs server | no | yes (Jetty on 9090) |
+| Speed | ~milliseconds | ~seconds |
+
+## Key Differences
+
+**Browserless tests** run entirely server-side. They are fast, reliable (no Selenium timing issues), and run in CI without a display. They verify server-side logic — component state, event handling, listener behavior.
+
+**TestBench e2e tests** drive a real browser. They are slower but verify the full stack — HTML rendering, CSS, web component behavior, and browser APIs like scroll position. Some behaviors (smooth scrolling, focus, hover states) can only be tested this way.
+
+Both approaches use page objects with the same API, so the shared test cases are structurally identical — compare `MainViewTest` and `MainViewIT` side by side to see this clearly.

@@ -17,6 +17,7 @@
 
         <vaadin.version>25.1.5</vaadin.version>
         <jetty.version>12.1.4</jetty.version>
+        <it-deployment.port>9090</it-deployment.port>
     </properties>
 
     <repositories>
@@ -80,6 +81,12 @@
                 <scope>import</scope>
                 <version>${vaadin.version}</version>
             </dependency>
+            <!-- browserless-test-shared 1.0.0 pulls jackson-databind 3.0.4 which Vaadin 25 rejects; force to 3.1.x -->
+            <dependency>
+                <groupId>tools.jackson.core</groupId>
+                <artifactId>jackson-databind</artifactId>
+                <version>3.1.2</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
@@ -108,6 +115,13 @@
 
         <dependency>
             <groupId>com.vaadin</groupId>
+            <artifactId>browserless-test-junit6</artifactId>
+            <scope>test</scope>
+            <optional>true</optional>
+        </dependency>
+
+        <dependency>
+            <groupId>com.vaadin</groupId>
             <artifactId>vaadin-testbench-junit6</artifactId>
             <scope>test</scope>
             <!-- Test-scoped dependencies are always considered "optional", but
@@ -128,6 +142,11 @@
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-compiler-plugin</artifactId>
                     <version>3.14.1</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <version>3.5.4</version>
                 </plugin>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
@@ -219,6 +238,9 @@
                         <artifactId>jetty-ee10-maven-plugin</artifactId>
                         <configuration>
                             <scan>0</scan>
+                            <httpConnector>
+                                <port>${it-deployment.port}</port>
+                            </httpConnector>
                             <stopPort>8081</stopPort>
                             <stopWait>5</stopWait>
                             <stopKey>${project.artifactId}</stopKey>
@@ -256,6 +278,9 @@
                         <configuration>
                             <trimStackTrace>false</trimStackTrace>
                             <enableAssertions>true</enableAssertions>
+                            <systemPropertyVariables>
+                                <deployment.port>${it-deployment.port}</deployment.port>
+                            </systemPropertyVariables>
                         </configuration>
                     </plugin>
                 </plugins>
