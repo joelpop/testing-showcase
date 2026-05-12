@@ -66,8 +66,6 @@ src/test/java/com/example/application/
 
 `MainViewTest` extends `BrowserlessTest` (from `browserless-test-junit6`). Vaadin's test environment instantiates the UI, session, and routes in the JVM — no browser, no HTTP. Tests call `navigate(MainView.class)` to get a view instance, then interact through the page objects.
 
-Page objects extend `ComponentTester<T>` and expose the same high-level methods as their TestBench counterparts (`greet()`, `getCards()`, `getMessage()`, `close()`). Internally they use `find(ComponentType.class)` to locate child components in the server-side component tree, without relying on DOM structure.
-
 ---
 
 ### Integration Tests — `mvn verify -Pit`
@@ -91,7 +89,54 @@ TestBench page objects extend `TestBenchElement` and are annotated with `@Elemen
 
 #### E2E-Only Test
 
-`greetButton_scrollsNewestCardIntoView` is only in `MainViewIT` — browserless tests have no concept of scroll position or viewport visibility. It adds enough cards to force scrolling, then verifies via JavaScript that the newest card is within the scroller's visible bounds.
+`greetButton_scrollsNewestCardIntoView` is only in `MainViewIT` — browserless tests have no concept of scroll position or viewport visibility. It adds cards until the first card scrolls out of view (adapting to actual window size rather than a hardcoded count), then uses `waitUntil()` to confirm the newest card has scrolled into the visible area. Scroll visibility is checked via `TestBenchElement.getRect()`.
+
+---
+
+## Page Object Design
+
+Both page object families follow the same structural conventions.
+
+### Three-section layout
+
+Each page object class is divided into three sections:
+
+```java
+// PUBLIC API          — methods called directly by tests
+// INTERNAL component accessors  — private methods that locate specific components
+// INTERNAL helpers    — private methods that combine accessors into operations
+```
+
+This keeps the public surface clean and makes component lookups easy to find and update in one place.
+
+### Stable element location
+
+Components are always located by a user-visible identifier rather than by type alone:
+
+```java
+// Browserless
+find(TextField.class).withCaption("Your name").single()
+find(Button.class).withText("Say hello").single()
+
+// TestBench
+$(TextFieldElement.class).withCaption("Your name").single()
+$(ButtonElement.class).withText("Say hello").single()
+```
+
+This prevents tests from breaking when additional components of the same type are added to the view.
+
+### Method chaining
+
+`greet()` and `clickGreetButton()` return the newly added card, enabling fluent test expressions:
+
+```java
+assertEquals("Hello, Alice.", view.greet("Alice").getMessage());
+view.greet("Alice").close();
+```
+
+### Separation of concerns
+
+Visibility relative to the scroller is a concern of the view, not the card. `isCardVisible(GreetingCardElement)` lives on `MainViewElement` so that `GreetingCardElement` only knows about its own content.
 
 ---
 
@@ -100,9 +145,9 @@ TestBench page objects extend `TestBenchElement` and are annotated with `@Elemen
 | | Browserless (`MainViewTest`) | TestBench (`MainViewIT`) |
 |---|---|---|
 | Page object base | `ComponentTester<T>` | `TestBenchElement` |
-| Method names | `greet()`, `getCards()`, `getMessage()`, `close()` | same |
+| Public method names | `greet()`, `getMessage()`, `getTimestamp()`, `close()` | same |
 | Test cases | 6 shared cases | 6 shared + 1 e2e-only |
-| Element location | component tree (`find()`) | DOM (`$()`) |
+| Element location | `find().withCaption()/withText()` | `$().withCaption()/withText()` |
 | Run with | `mvn test` | `mvn verify -Pit` |
 | Needs browser | no | yes (Chrome) |
 | Needs server | no | yes (Jetty on 9090) |

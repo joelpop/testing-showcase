@@ -16,6 +16,9 @@ import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.theme.lumo.LumoUtility;
 
+/**
+ * Root view: scrollable list of greeting cards above a name-input area.
+ */
 @Route("")
 public class MainView extends Composite<VerticalLayout> {
 
@@ -56,6 +59,10 @@ public class MainView extends Composite<VerticalLayout> {
         content.setFlexGrow(1, scroller);
     }
 
+    /*
+     * Creates a greeting card for the current name field value, adds it to the list,
+     * and smoothly scrolls it into view.
+     */
     private void onGreetButtonClick(ClickEvent<Button> ignored) {
         var card = new GreetingCard(greetService.greet(nameTextField.getValue()));
         cardsLayout.add(card);

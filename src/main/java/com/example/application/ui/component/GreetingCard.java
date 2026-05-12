@@ -14,10 +14,18 @@ import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 
 import java.time.format.DateTimeFormatter;
 
+/**
+ * Card displaying a greeting's message, creation timestamp, and a close button.
+ */
 public class GreetingCard extends Composite<Card> {
 
     private static final DateTimeFormatter TIME_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS");
 
+    /**
+     * Creates a card for the given greeting.
+     *
+     * @param greeting the greeting to display
+     */
     public GreetingCard(Greeting greeting) {
         var timestamp = new Span(greeting.timestamp().format(TIME_FORMAT));
         timestamp.getStyle()
