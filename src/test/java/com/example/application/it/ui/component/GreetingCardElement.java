@@ -2,8 +2,8 @@ package com.example.application.it.ui.component;
 
 import com.vaadin.flow.component.button.testbench.ButtonElement;
 import com.vaadin.flow.component.card.testbench.CardElement;
+import com.vaadin.flow.component.html.testbench.DivElement;
 import com.vaadin.flow.component.html.testbench.SpanElement;
-import com.vaadin.testbench.TestBenchElement;
 import com.vaadin.testbench.elementsbase.Element;
 
 /**
@@ -24,7 +24,7 @@ public class GreetingCardElement extends CardElement {
      * @return the message text
      */
     public String getMessage() {
-        return getMessageDiv().getText();
+        return getMessageDivElement().getText();
     }
 
     /**
@@ -33,28 +33,28 @@ public class GreetingCardElement extends CardElement {
      * @return the timestamp text
      */
     public String getTimestamp() {
-        return getTimestampSpan().getText();
+        return getTimestampSpanElement().getText();
     }
 
     /**
      * Clicks the close button to remove the card.
      */
     public void close() {
-        getCloseButton().click();
+        getCloseButtonElement().click();
     }
 
 
-    // INTERNAL component accessors
+    // INTERNAL element accessors
 
-    private SpanElement getTimestampSpan() {
+    private SpanElement getTimestampSpanElement() {
         return getHeader().$(SpanElement.class).single();
     }
 
-    private ButtonElement getCloseButton() {
+    private ButtonElement getCloseButtonElement() {
         return getHeader().$(ButtonElement.class).single();
     }
 
-    private TestBenchElement getMessageDiv() {
-        return getContents().getLast();
+    private DivElement getMessageDivElement() {
+        return getContents().getLast().wrap(DivElement.class);
     }
 }

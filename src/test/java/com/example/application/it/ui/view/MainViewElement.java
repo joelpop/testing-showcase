@@ -28,7 +28,8 @@ public class MainViewElement extends TestBenchElement {
      * @param name the name to enter
      */
     public void setName(String name) {
-        getNameTextField().setValue(name);
+        getNameTextFieldElement().click();
+        getNameTextFieldElement().sendKeys(name);
     }
 
     /**
@@ -46,15 +47,15 @@ public class MainViewElement extends TestBenchElement {
      * Presses Enter in the name text field.
      */
     public void pressEnterInNameField() {
-        getNameTextField().sendKeys(org.openqa.selenium.Keys.ENTER);
+        getNameTextFieldElement().sendKeys(org.openqa.selenium.Keys.ENTER);
     }
 
     /**
-     * Returns all greeting cards currently displayed in the list.
+     * Returns all greeting card elements currently displayed in the list.
      *
      * @return list of card elements, in display order
      */
-    public List<GreetingCardElement> getCards() {
+    public List<GreetingCardElement> getGreetingCardElements() {
         return $(GreetingCardElement.class).all();
     }
 
@@ -64,7 +65,28 @@ public class MainViewElement extends TestBenchElement {
      * @return card count
      */
     public int getCardCount() {
-        return getCards().size();
+        return getGreetingCardElements().size();
+    }
+
+    /**
+     * Returns whether the name text field currently has keyboard focus.
+     *
+     * @return {@code true} if the name field is focused
+     */
+    public boolean isNameFieldFocused() {
+        return getNameTextFieldElement().hasAttribute("focused");
+    }
+
+    /**
+     * Returns whether the name text field currently has a non-empty text selection.
+     *
+     * @return {@code true} if one or more characters are selected in the name field
+     */
+    public boolean isNameFieldTextSelected() {
+        return (Boolean) executeScript(
+                "const el = arguments[0].inputElement;" +
+                "return el.value.length > 0 && el.selectionStart === 0 && el.selectionEnd === el.value.length;",
+                getNameTextFieldElement());
     }
 
     /**
@@ -74,24 +96,24 @@ public class MainViewElement extends TestBenchElement {
      * @return {@code true} if the card is within the scroller's visible area
      */
     public boolean isCardVisible(GreetingCardElement card) {
-        var scrollerRect = getScroller().getRect();
+        var scrollerRect = getScrollerElement().getRect();
         var cardRect = card.getRect();
         return cardRect.getY() + cardRect.getHeight() <= scrollerRect.getY() + scrollerRect.getHeight() + 1
             && cardRect.getY() >= scrollerRect.getY() - 1;
     }
 
 
-    // INTERNAL component accessors
+    // INTERNAL element accessors
 
-    private ScrollerElement getScroller() {
+    private ScrollerElement getScrollerElement() {
         return $(ScrollerElement.class).single();
     }
 
-    private TextFieldElement getNameTextField() {
+    private TextFieldElement getNameTextFieldElement() {
         return $(TextFieldElement.class).withCaption("Your name").single();
     }
 
-    private ButtonElement getGreetButton() {
+    private ButtonElement getGreetButtonElement() {
         return $(ButtonElement.class).withText("Say hello").single();
     }
 
@@ -104,7 +126,7 @@ public class MainViewElement extends TestBenchElement {
      * @return an element for the newly added greeting card
      */
     private GreetingCardElement clickGreetButton() {
-        getGreetButton().click();
-        return getCards().getLast();
+        getGreetButtonElement().click();
+        return getGreetingCardElements().getLast();
     }
 }

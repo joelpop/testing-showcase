@@ -4,8 +4,11 @@ import com.example.application.ui.component.GreetingCard;
 import com.vaadin.browserless.ComponentTester;
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.button.ButtonTester;
 import com.vaadin.flow.component.html.Div;
+import com.vaadin.flow.component.html.DivTester;
 import com.vaadin.flow.component.html.Span;
+import com.vaadin.flow.component.html.SpanTester;
 
 /**
  * Browserless page object for {@link com.example.application.ui.component.GreetingCard}.
@@ -34,7 +37,7 @@ public class GreetingCardTester extends ComponentTester<GreetingCard> {
      * @return the message text
      */
     public String getMessage() {
-        return getMessageDiv().getText();
+        return getMessageDivTester().getText();
     }
 
     /**
@@ -43,29 +46,29 @@ public class GreetingCardTester extends ComponentTester<GreetingCard> {
      * @return the timestamp text
      */
     public String getTimestamp() {
-        return getTimestampSpan().getText();
+        return getTimestampSpanTester().getText();
     }
 
     /**
      * Clicks the close button to remove the card from its parent.
      */
     public void close() {
-        new ComponentTester<>(getCloseButton()).click();
+        getCloseButtonTester().click();
     }
 
 
-    // INTERNAL component accessors
+    // INTERNAL component tester accessors
 
-    private Span getTimestampSpan() {
-        return headerChild(Span.class);
+    private SpanTester getTimestampSpanTester() {
+        return new SpanTester(headerChild(Span.class));
     }
 
-    private Button getCloseButton() {
-        return headerChild(Button.class);
+    private ButtonTester<Button> getCloseButtonTester() {
+        return new ButtonTester<>(headerChild(Button.class));
     }
 
-    private Div getMessageDiv() {
-        return find(Div.class).single();
+    private DivTester getMessageDivTester() {
+        return new DivTester(find(Div.class).single());
     }
 
 

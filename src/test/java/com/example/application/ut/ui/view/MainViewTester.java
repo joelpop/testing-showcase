@@ -5,8 +5,9 @@ import com.example.application.ui.view.MainView;
 import com.example.application.ut.ui.component.GreetingCardTester;
 import com.vaadin.browserless.ComponentTester;
 import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.button.ButtonTester;
 import com.vaadin.flow.component.textfield.TextField;
-import org.jspecify.annotations.NonNull;
+import com.vaadin.flow.component.textfield.TextFieldTester;
 
 import java.util.List;
 
@@ -37,7 +38,7 @@ public class MainViewTester extends ComponentTester<MainView> {
      * @return card count
      */
     public int getCardCount() {
-        return getGreetingCards().size();
+        return getGreetingCardTesters().size();
     }
 
     /**
@@ -46,7 +47,7 @@ public class MainViewTester extends ComponentTester<MainView> {
      * @param name the name to enter
      */
     public void setName(String name) {
-        getNameTextField().setValue(name);
+        getNameTextFieldTester().setValue(name);
     }
 
     /**
@@ -61,19 +62,22 @@ public class MainViewTester extends ComponentTester<MainView> {
     }
 
 
-    // INTERNAL component accessors
+    // INTERNAL component tester accessors
 
-    private List<GreetingCard> getGreetingCards() {
-        return find(GreetingCard.class).all();
+    private List<GreetingCardTester> getGreetingCardTesters() {
+        return find(GreetingCard.class).all().stream()
+                .map(GreetingCardTester::new)
+                .toList();
     }
 
-    private TextField getNameTextField() {
-        return find(TextField.class).withCaption("Your name").single();
+    private TextFieldTester<TextField, String> getNameTextFieldTester() {
+        return new TextFieldTester<>(find(TextField.class).withCaption("Your name").single());
     }
 
-    private @NonNull Button getGreetButton() {
-        return find(Button.class).withText("Say hello").single();
+    private ButtonTester<Button> getGreetButtonTester() {
+        return new ButtonTester<>(find(Button.class).withText("Say hello").single());
     }
+
 
     // INTERNAL helpers
 
@@ -83,18 +87,7 @@ public class MainViewTester extends ComponentTester<MainView> {
      * @return a tester for the newly added greeting card
      */
     private GreetingCardTester clickGreetButton() {
-        new ComponentTester<>(getGreetButton()).click();
-        return getCardTesters().getLast();
-    }
-
-    /*
-     * Returns testers for all greeting cards currently displayed in the list.
-     *
-     * @return list of card testers, in display order
-     */
-    private List<GreetingCardTester> getCardTesters() {
-        return getGreetingCards().stream()
-                .map(GreetingCardTester::new)
-                .toList();
+        getGreetButtonTester().click();
+        return getGreetingCardTesters().getLast();
     }
 }

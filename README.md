@@ -6,6 +6,8 @@ A Vaadin application demonstrating two complementary testing approaches: **brows
 
 A greeting app where users type a name and click **Say hello** (or press Enter). Each greeting appears as a card with a timestamp and a close button. Cards accumulate in a scrollable list, automatically scrolling the newest card into view.
 
+The name field is focused when the view opens. After each greeting, the name field regains focus with its text selected, so the user can immediately type a new name.
+
 ## Running the Application
 
 ```
@@ -66,6 +68,8 @@ src/test/java/com/example/application/
 
 `MainViewTest` extends `BrowserlessTest` (from `browserless-test-junit6`). Vaadin's test environment instantiates the UI, session, and routes in the JVM — no browser, no HTTP. Tests call `navigate(MainView.class)` to get a view instance, then interact through the page objects.
 
+The suite covers button clicks, the Enter key shortcut, empty-name handling, card message and timestamp content, and card removal — 7 test cases in total.
+
 ---
 
 ### Integration Tests — `mvn verify -Pit`
@@ -87,9 +91,13 @@ src/test/java/com/example/application/
 
 TestBench page objects extend `TestBenchElement` and are annotated with `@Element("tag-name")`. They expose the same high-level API as the browserless page objects — same method names, different implementation. Internally they use `$(ElementType.class)` to query the live DOM.
 
-#### E2E-Only Test
+The suite covers the same 7 cases as the browserless suite, plus 4 that require a real browser:
 
-`greetButton_scrollsNewestCardIntoView` is only in `MainViewIT` — browserless tests have no concept of scroll position or viewport visibility. It adds cards until the first card scrolls out of view (adapting to actual window size rather than a hardcoded count), then uses `waitUntil()` to confirm the newest card has scrolled into the visible area. Scroll visibility is checked via `TestBenchElement.getRect()`.
+#### Browser-Only Tests
+
+**Focus and selection** — three tests verify that the name field is focused on view open, and that it is focused with its text selected after clicking the button or pressing Enter. Browserless tests have no concept of browser focus or text selection.
+
+**Scroll visibility** — `greetButton_scrollsNewestCardIntoView` adds cards until the first card scrolls out of view (adapting to actual window size rather than a hardcoded count), then uses `waitUntil()` to confirm the newest card is in the visible area. Scroll position is checked via `TestBenchElement.getRect()`.
 
 ---
 
@@ -102,12 +110,49 @@ Both page object families follow the same structural conventions.
 Each page object class is divided into three sections:
 
 ```java
-// PUBLIC API          — methods called directly by tests
-// INTERNAL component accessors  — private methods that locate specific components
-// INTERNAL helpers    — private methods that combine accessors into operations
+// PUBLIC API                          — methods called directly by tests
+// INTERNAL component tester accessors — private methods that locate and wrap components (browserless)
+// INTERNAL element accessors          — private methods that locate DOM elements (TestBench)
+// INTERNAL helpers                    — private methods that combine accessors into operations
 ```
 
 This keeps the public surface clean and makes component lookups easy to find and update in one place.
+
+### Accessor return types
+
+Internal accessor methods are named and typed to match what they actually return — a `Tester` or `Element` suffix signals that the method returns a testing wrapper, not the raw component:
+
+```java
+// Browserless — internal accessors return tester types
+private TextFieldTester<TextField, String> getNameTextFieldTester() { ... }
+private ButtonTester<Button>              getGreetButtonTester()    { ... }
+private SpanTester                        getTimestampSpanTester()  { ... }
+private DivTester                         getMessageDivTester()     { ... }
+
+// TestBench — internal accessors return element types
+private TextFieldElement getNameTextFieldElement() { ... }
+private ButtonElement    getGreetButtonElement()   { ... }
+private SpanElement      getTimestampSpanElement() { ... }
+private DivElement       getMessageDivElement()    { ... }
+```
+
+This prevents confusion when reading the code — a method named `getNameTextField()` that returns a `TextFieldTester` would be misleading.
+
+### User input via Tester and Element APIs
+
+All user interactions in the tests go through the appropriate testing abstraction — never through direct component state manipulation:
+
+```java
+// Browserless — TextFieldTester.setValue() checks usability before setting
+getNameTextFieldTester().setValue(name);   // not: textField.setValue(name)
+getGreetButtonTester().click();            // not: componentTester.click()
+
+// TestBench — click() + sendKeys() simulates real typing (leaves no pre-existing selection)
+getNameTextFieldElement().click();
+getNameTextFieldElement().sendKeys(name);  // not: textFieldElement.setValue(name)
+```
+
+This matters for correctness: `TextFieldElement.setValue()` in TestBench leaves text selected as a side effect, which would mask the absence of the autoselect behavior being tested.
 
 ### Stable element location
 
@@ -145,8 +190,9 @@ Visibility relative to the scroller is a concern of the view, not the card. `isC
 | | Browserless (`MainViewTest`) | TestBench (`MainViewIT`) |
 |---|---|---|
 | Page object base | `ComponentTester<T>` | `TestBenchElement` |
-| Public method names | `greet()`, `getMessage()`, `getTimestamp()`, `close()` | same |
-| Test cases | 6 shared cases | 6 shared + 1 e2e-only |
+| Internal accessor types | `TextFieldTester`, `ButtonTester`, `SpanTester`, `DivTester` | `TextFieldElement`, `ButtonElement`, `SpanElement`, `DivElement` |
+| Public method names | `greet()`, `setName()`, `getMessage()`, `getTimestamp()`, `close()`, … | same |
+| Test cases | 7 shared cases | 7 shared + 4 browser-only |
 | Element location | `find().withCaption()/withText()` | `$().withCaption()/withText()` |
 | Run with | `mvn test` | `mvn verify -Pit` |
 | Needs browser | no | yes (Chrome) |

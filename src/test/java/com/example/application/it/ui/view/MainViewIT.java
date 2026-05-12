@@ -80,7 +80,8 @@ class MainViewIT extends BrowserTestBase {
     }
 
     /**
-     * Verifies pressing Enter in the name field is equivalent to clicking Say hello.
+     * Verifies pressing Enter in the name field is equivalent to clicking
+     * Say hello.
      */
     @BrowserTest
     void enterKey_withName_addsCard() {
@@ -101,16 +102,67 @@ class MainViewIT extends BrowserTestBase {
     }
 
     /**
+     * Verifies the name field has focus when the view first opens.
+     */
+    @BrowserTest
+    void openView_nameFieldIsFocused() {
+        waitUntil(_ -> view.isNameFieldFocused());
+        Assertions.assertTrue(view.isNameFieldFocused());
+    }
+
+    /**
+     * Verifies clicking Say hello returns focus to the name field with the
+     * prior name selected.
+     */
+    @BrowserTest
+    void greetButton_focusesAndSelectsNameField() {
+        view.greet("Alice");
+        waitUntil(_ -> view.getCardCount() == 1);
+        Assertions.assertTrue(view.isNameFieldFocused());
+        Assertions.assertTrue(view.isNameFieldTextSelected());
+    }
+
+    /**
+     * Verifies pressing Enter in the name field returns focus to the name
+     * field with the prior name selected.
+     */
+    @BrowserTest
+    void enterKey_withName_focusesAndSelectsNameField() {
+        view.setName("Alice");
+        view.pressEnterInNameField();
+        waitUntil(_ -> view.getCardCount() == 1);
+        Assertions.assertTrue(view.isNameFieldFocused());
+        Assertions.assertTrue(view.isNameFieldTextSelected());
+    }
+
+    /**
+     * Verifies pressing Enter in the name field with no name entered returns
+     * focus to the name field without selecting any text.
+     */
+    @BrowserTest
+    void enterKey_withEmptyName_focusesNameFieldWithoutSelection() {
+        view.pressEnterInNameField();
+        waitUntil(_ -> view.getCardCount() == 1);
+        Assertions.assertTrue(view.isNameFieldFocused());
+        Assertions.assertFalse(view.isNameFieldTextSelected());
+    }
+
+    /**
      * Verifies the newest card is automatically scrolled into the visible area
      * after the list grows beyond the scroller's bounds.
      */
     @BrowserTest
     void greetButton_scrollsNewestCardIntoView() {
         var firstCard = view.greet("User 1");
-        for (int i = 2; i <= 100 && view.isCardVisible(firstCard); i++) {
-            view.greet("User " + i);
+        int num = 2;
+        while (num <= 100 && view.isCardVisible(firstCard)) {
+            view.greet("User " + num++);
         }
-        var newestCard = view.getCards().getLast();
-        waitUntil(_ -> view.isCardVisible(newestCard));
+        var cardCount = num - 1;
+
+        Assertions.assertEquals(cardCount, view.getCardCount());
+        var newestGreetingCardElement = view.getGreetingCardElements().getLast();
+        waitUntil(_ -> view.isCardVisible(newestGreetingCardElement));
+        Assertions.assertTrue(view.isCardVisible(newestGreetingCardElement));
     }
 }
