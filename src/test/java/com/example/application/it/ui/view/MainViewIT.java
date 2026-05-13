@@ -1,9 +1,11 @@
 package com.example.application.it.ui.view;
 
+import com.example.application.it.ServerExtension;
 import com.vaadin.testbench.BrowserTest;
 import com.vaadin.testbench.BrowserTestBase;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.extension.ExtendWith;
 
 import java.util.Optional;
 
@@ -11,17 +13,21 @@ import java.util.Optional;
  * TestBench end-to-end tests for {@link com.example.application.ui.view.MainView},
  * using {@link MainViewElement} as the page object.
  *
- * <p>Runs in a real Chrome browser against a Jetty instance started on port 9090.
+ * <p>Runs in a real Chrome browser against a Jetty instance on the port configured
+ * by the {@code it-deployment.port} POM property. {@link ServerExtension} starts
+ * the server automatically when it is not already running (e.g., when launched
+ * from an IDE rather than via {@code mvn verify -Pit}).
  * Covers the same cases as {@link com.example.application.ut.ui.view.MainViewTest},
  * plus scroll-into-view behavior that requires real browser rendering.
  */
+@ExtendWith(ServerExtension.class)
 class MainViewIT extends BrowserTestBase {
 
     private static String getBaseUrl() {
         var hostname = Optional.ofNullable(System.getenv("HOSTNAME"))
                 .filter(h -> !h.isBlank())
                 .orElse("localhost");
-        String port = System.getProperty("deployment.port", "9090");
+        String port = System.getProperty("deployment.port");
         return "http://" + hostname + ":" + port + "/";
     }
 

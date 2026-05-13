@@ -81,7 +81,7 @@ public class MainViewTester extends ComponentTester<MainView> {
 
     // INTERNAL helpers
 
-    /*
+    /**
      * Clicks the "Say hello" button.
      *
      * @return a tester for the newly added greeting card

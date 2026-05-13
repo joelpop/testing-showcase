@@ -18,6 +18,8 @@
         <vaadin.version>25.1.5</vaadin.version>
         <jetty.version>12.1.4</jetty.version>
         <it-deployment.port>9090</it-deployment.port>
+        <unit-test.concurrent-limit>32</unit-test.concurrent-limit>
+        <integration-test.concurrent-limit>8</integration-test.concurrent-limit>
     </properties>
 
     <repositories>
@@ -87,6 +89,25 @@
                 <artifactId>jackson-databind</artifactId>
                 <version>3.1.2</version>
             </dependency>
+
+            <dependency>
+                <groupId>org.eclipse.jetty.ee10</groupId>
+                <artifactId>jetty-ee10-webapp</artifactId>
+                <version>${jetty.version}</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.eclipse.jetty.ee10</groupId>
+                <artifactId>jetty-ee10-annotations</artifactId>
+                <version>${jetty.version}</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.junit.platform</groupId>
+                <artifactId>junit-platform-launcher</artifactId>
+                <version>6.0.3</version>
+                <scope>test</scope>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
@@ -129,10 +150,42 @@
             optional dependencies if not explicitly marked as optional here. -->
             <optional>true</optional>
         </dependency>
+
+        <dependency>
+            <groupId>org.eclipse.jetty.ee10</groupId>
+            <artifactId>jetty-ee10-webapp</artifactId>
+            <scope>test</scope>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- AnnotationConfiguration lives here; required so embedded Jetty scans
+             for ServletContainerInitializers (Vaadin's servlet registration). -->
+        <dependency>
+            <groupId>org.eclipse.jetty.ee10</groupId>
+            <artifactId>jetty-ee10-annotations</artifactId>
+            <scope>test</scope>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- Required to compile TestBenchParallelLimiter (LauncherSessionListener).
+             Version must match the junit-platform-engine version pulled in transitively. -->
+        <dependency>
+            <groupId>org.junit.platform</groupId>
+            <artifactId>junit-platform-launcher</artifactId>
+            <scope>test</scope>
+            <optional>true</optional>
+        </dependency>
     </dependencies>
 
     <build>
         <defaultGoal>jetty:run</defaultGoal>
+
+        <testResources>
+            <testResource>
+                <directory>src/test/resources</directory>
+                <filtering>true</filtering>
+            </testResource>
+        </testResources>
 
         <pluginManagement>
             <plugins>
@@ -177,6 +230,21 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <properties>
+                        <configurationParameters>
+                            junit.jupiter.execution.parallel.enabled=true
+                            junit.jupiter.execution.parallel.mode.default=concurrent
+                            junit.jupiter.execution.parallel.mode.classes.default=concurrent
+                            junit.jupiter.execution.parallel.config.strategy=fixed
+                            junit.jupiter.execution.parallel.config.fixed.parallelism=${unit-test.concurrent-limit}
+                        </configurationParameters>
+                    </properties>
+                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -280,6 +348,7 @@
                             <enableAssertions>true</enableAssertions>
                             <systemPropertyVariables>
                                 <deployment.port>${it-deployment.port}</deployment.port>
+                                <com.vaadin.testbench.Parameters.testsInParallel>${integration-test.concurrent-limit}</com.vaadin.testbench.Parameters.testsInParallel>
                             </systemPropertyVariables>
                         </configuration>
                     </plugin>

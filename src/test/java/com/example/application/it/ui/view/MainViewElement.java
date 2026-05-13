@@ -120,7 +120,7 @@ public class MainViewElement extends TestBenchElement {
 
     // INTERNAL helpers
 
-    /*
+    /**
      * Clicks the "Say hello" button.
      *
      * @return an element for the newly added greeting card

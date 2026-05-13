@@ -70,7 +70,7 @@ public class MainView extends Composite<VerticalLayout> {
 
     /*
      * Creates a greeting card for the current name field value, adds it to the list,
-     * and smoothly scrolls it into view.
+     * smoothly scrolls it into view, and refocuses on the name field.
      */
     private void onGreetButtonClick(ClickEvent<Button> ignored) {
         var card = new GreetingCard(greetService.greet(nameTextField.getValue()));
