@@ -36,8 +36,9 @@ import com.vaadin.flow.theme.lumo.LumoUtility;
  * | | +-------------------------------+ | |
  * | +-----------------------------------+ |
  * | +-inputArea(HorizontalLayout)-------+ |
+ * | |  Your name                        | |
  * | | +-nameTextField-+ +-greetButton-+ | |
- * | | | Your name     | |  Say hello  | | |
+ * | | |               | |  Say hello  | | |
  * | | +---------------+ +-------------+ | |
  * | +-----------------------------------+ |
  * +---------------------------------------+
