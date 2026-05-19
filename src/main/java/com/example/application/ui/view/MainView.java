@@ -19,6 +19,29 @@ import com.vaadin.flow.theme.lumo.LumoUtility;
 
 /**
  * Root view: scrollable list of greeting cards above a name-input area.
+ *
+ * <pre>
+ * +-content(VerticalLayout)---------------+
+ * | +-scroller--------------------------+ |
+ * | | +-cardsLayout(VerticalLayout)---+ | |
+ * | | | +-card(GreetingCard)--------+ | | |
+ * | | | | (see GreetingCard)        | | | |
+ * | | | +---------------------------+ | | |
+ * | | | +-card(GreetingCard)--------+ | | |
+ * | | | | (see GreetingCard)        | | | |
+ * | | | +---------------------------+ | | |
+ * | | |               .               | | |
+ * | | |               .               | | |
+ * | | |               .               | | |
+ * | | +-------------------------------+ | |
+ * | +-----------------------------------+ |
+ * | +-inputArea(HorizontalLayout)-------+ |
+ * | | +-nameTextField-+ +-greetButton-+ | |
+ * | | | Your name     | |  Say hello  | | |
+ * | | +---------------+ +-------------+ | |
+ * | +-----------------------------------+ |
+ * +---------------------------------------+
+ * </pre>
  */
 @Route("")
 public class MainView extends Composite<VerticalLayout> {

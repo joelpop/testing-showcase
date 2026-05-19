@@ -16,6 +16,19 @@ import java.time.format.DateTimeFormatter;
 
 /**
  * Card displaying a greeting's message, creation timestamp, and a close button.
+ *
+ * <pre>
+ * +-content(Card)-----------------------------------+
+ * | +-header(HorizontalLayout)--------------------+ |
+ * | | +-timestamp(Span)---------+ +-closeButton-+ | |
+ * | | | yyyy-MM-dd HH:mm:ss.SSS | |     [X]     | | |
+ * | | +-------------------------+ +-------------+ | |
+ * | +---------------------------------------------+ |
+ * | +-Div-----------------------------------------+ |
+ * | | Hello, anonymous user.                      | |
+ * | +---------------------------------------------+ |
+ * +-------------------------------------------------+
+ * </pre>
  */
 public class GreetingCard extends Composite<Card> {
 
