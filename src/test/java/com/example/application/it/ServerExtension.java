@@ -23,27 +23,37 @@ import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
 
 /**
- * JUnit extension that prepares the test environment for IT tests:
- * <ul>
- *   <li>Starts an embedded Jetty server when no server is already listening on
- *       the configured port.</li>
- *   <li>Applies the TestBench parallel-test limit before
- *       {@code ParallelConfigurationStrategy} captures it (via the static
- *       initializer, which runs when JUnit loads this class during test
- *       discovery).</li>
- * </ul>
+ * Shims the Maven build lifecycle for IDE runs: {@code mvn verify -Pit} starts
+ * and stops Jetty around the IT tests automatically via the Jetty Maven plugin;
+ * this extension does the same when no server is detected on the configured
+ * port. Reference-counted across concurrent test classes so only the first class
+ * starts it and only the last stops it.
  *
  * <p>When tests are run via {@code mvn verify -Pit}, Maven starts Jetty before
  * Failsafe and sets the {@code deployment.port} system property — this extension
- * detects the occupied port and is a no-op for server startup. When tests are
- * run directly from an IDE, the extension reads the port from
- * {@code it-test.properties} (a Maven-filtered resource whose values come from
- * the {@code it-deployment.port} and {@code integration-test.concurrent-limit}
- * POM properties), sets the system property, and starts the server itself.
+ * detects the occupied port and is a no-op. When tests are run directly from an
+ * IDE, the extension reads the port from {@code it-test.properties} (a
+ * Maven-filtered resource whose values come from the {@code it-deployment.port}
+ * POM property), sets the system property, and starts the server itself.
  *
- * <p>Reference-counted so that multiple concurrent IT classes share one server
- * instance: the first class to start brings the server up; the last to finish
- * takes it down.
+ * <p>Server startup details:
+ * <ul>
+ *   <li><b>Port detection:</b> probes the configured port with a {@code Socket}
+ *       connection before doing anything; skips startup if already listening.</li>
+ *   <li><b>Classpath bridging:</b> Jetty's annotation scanner needs the full
+ *       application classpath to discover Vaadin's
+ *       {@code LookupServletContainerInitializer}. In IntelliJ,
+ *       {@code java.class.path} has everything, but in a Maven exec context it
+ *       contains only {@code plexus-classworlds} — the actual project JARs live
+ *       in the Plexus {@code URLClassLoader}. This extension walks the
+ *       thread-context classloader hierarchy and adds any {@code URLClassLoader}
+ *       entries it finds. Without this, {@code VaadinServlet} is never registered
+ *       and the app returns 404.</li>
+ *   <li><b>Readiness detection:</b> after {@code server.start()}, polls the root
+ *       URL for a {@code type="module"} script tag — present in Vaadin's HTML
+ *       shell but absent from a bare Jetty startup page — before signaling
+ *       readiness to the waiting test classes.</li>
+ * </ul>
  */
 public class ServerExtension implements BeforeAllCallback, AfterAllCallback {
 
@@ -59,16 +69,20 @@ public class ServerExtension implements BeforeAllCallback, AfterAllCallback {
      *
      * <p>Called from two places: this class's static initializer (loaded when
      * JUnit instantiates the extension), and {@link TestBenchParallelLimiter}
-     * (fired at JUnit launcher-session open via SPI). The
-     * {@code TestBenchParallelLimiter} call is the one that wins on IDE runs —
-     * the static initializer here typically fires too late, because
-     * {@code @ExtendWith} extension classes are loaded at extension
-     * instantiation time, after {@code ParallelConfigurationStrategy} has
-     * already been built. It is retained as a no-op safety net for IDEs that
-     * may not fire the {@code LauncherSessionListener} SPI.
-     *
-     * <p>A no-op when the system property is already set — Maven Failsafe sets
-     * it via {@code <systemPropertyVariables>} before the forked JVM starts.
+     * (fired at JUnit launcher-session open via SPI). Both call this method in
+     * every environment, but only one call ever does meaningful work:
+     * <ul>
+     *   <li><b>Maven runs:</b> Failsafe already set the system property via
+     *       {@code <systemPropertyVariables>} before the forked JVM started, so
+     *       this method finds the property present and returns immediately —
+     *       both the SPI call and the static-initializer call are no-ops.</li>
+     *   <li><b>IDE runs:</b> The SPI call from {@code TestBenchParallelLimiter}
+     *       fires first (at launcher-session open, before executor setup) and
+     *       sets the property. The static-initializer call fires later and is
+     *       then a no-op. The static initializer is retained as a safety net
+     *       for IDEs that may not fire the {@code LauncherSessionListener}
+     *       SPI.</li>
+     * </ul>
      */
     static void applyConcurrentLimit() {
         if (!System.getProperties().containsKey("com.vaadin.testbench.Parameters.testsInParallel")) {

@@ -1,8 +1,14 @@
 # Testing Showcase
 
-A Vaadin application demonstrating two complementary testing approaches that mirror each other: **browserless unit tests**, which run the UI entirely in the JVM with no browser or server, and **TestBench end-to-end tests**, which drive a real Chrome browser. Both implementations use page objects with a similar API.
+A Vaadin application demonstrating both Browserless and TestBench testing along with best practices for each.
 
-In practice the two suites would not overlap tests: the shared 7 cases would live only in the faster browserless suite, and the IT suite would cover only the 5 cases that require a real browser. Both are fully implemented here so their structure can be compared side by side.
+The two testing approaches complement each other: **browserless unit tests**, which run the UI entirely in the JVM with no browser or server, and **TestBench end-to-end tests**, which drive a real Chrome browser. In this showcase, tests of the two suites overlap each other — in practice that would not be desirable. Seven cases both implement would normally live only in the faster browserless suite, and the IT suite would cover only the five cases that require a real browser. They are implemented both ways here only so you can compare their structure side by side.
+
+Both suites are built around page objects — classes that encapsulate the logic to locate and interact with UI components. Tests stay concise and focused because they express what to do, not how to find what to do it to; a UI change requires updating only the page object rather than every test that uses it. Each view and component has its own dedicated page object so concerns stay at the right level. All page objects follow the same structure — public API, internal accessors, helpers — so any one of them is immediately navigable. Methods return the resulting object directly, enabling fluent test expressions, and accessor names make return types self-evident at the call site.
+
+The integration test setup has a liberating feature worth calling out. Tests can be run directly from an IDE without manual app server startup/shutdown or dev app server port collision — shim classes handle what Maven's build lifecycle provides automatically, including server management and IT concurrency configuration.
+
+---
 
 ## The Application
 
@@ -12,15 +18,7 @@ The name field is focused when the view opens. After each greeting, the name fie
 
 ![Application Screenshot](README.dir/application-screenshot.png)
 
-## Running the Application
-
-```
-mvn jetty:run
-```
-
-Opens at [http://localhost:8080](http://localhost:8080).
-
-## Project Structure
+### Application Project Structure
 
 ```
 src/main/java/com/example/application/
@@ -36,15 +34,31 @@ src/main/java/com/example/application/
 └── AppShell.java
 ```
 
+### Running the Application
+
+- **Maven:** `mvn jetty:run`
+- **IDE:** This is a WAR-based app with no main class. In IntelliJ, open the Maven tool window and double-click Plugins → jetty → `jetty:run`, or create a Maven run configuration for the `jetty:run` goal.
+
+Opens at [http://localhost:8080](http://localhost:8080).
+
 ---
 
 ## Testing
 
-### Unit Tests — `mvn test`
+This showcase application demonstrates both browserless unit testing and browser-based end-to-end integration testing.
 
-No browser or servlet container is required. Two kinds of unit tests:
+### Unit Tests
 
-#### Plain JUnit — model and service
+#### Running the Unit Tests
+
+- **Maven:** `mvn test`
+- **IDE:** Run `MainViewTest` (or the entire `ut` package) directly
+
+No browser, server, or special configuration needed.
+
+There are two groups of unit tests:
+
+#### Plain JUnit — for model and service
 
 ```
 src/test/java/com/example/application/
@@ -57,7 +71,7 @@ src/test/java/com/example/application/
 
 These are standard JUnit 6 tests with no Vaadin machinery involved.
 
-#### Browserless — UI logic
+#### Browserless — for UI logic
 
 ```
 src/test/java/com/example/application/
@@ -76,16 +90,20 @@ Unit tests run in parallel. `ThreadLocal` is used for all session and UI state, 
 
 The suite covers button clicks, the Enter key shortcut, empty-name handling, card message and timestamp content, and card removal — 7 test cases in total.
 
----
+### Integration Tests
 
-### Integration Tests — `mvn verify -Pit`
+#### Running the Integration Tests
 
-Requires Chrome. When run via Maven, Jetty starts on the port configured by `it-deployment.port` (default 9090, chosen to avoid colliding with a running dev instance on 8080), tests run, then Jetty stops. When run directly from an IDE, `ServerExtension` detects that the server is not running and starts an embedded Jetty instance automatically — no manual server setup required.
+Requires Chrome.
+
+- **Maven:** `mvn verify -Pit` — Jetty starts before the tests and stops after.
+- **IDE:** Run `MainViewIT` directly. `ServerExtension` starts Jetty automatically if it is not already running, so no manual server setup is needed. `TestBenchParallelLimiter` configures the browser parallelism limit via the JUnit SPI hook before the executor starts — no VM options required unless overriding the default.
 
 ```
 src/test/java/com/example/application/
 └── it/
     ├── ServerExtension.java               # JUnit extension: starts embedded Jetty when not already running
+    ├── TestBenchParallelLimiter.java      # JUnit SPI hook: sets TestBench parallelism before executor setup
     └── ui/
         ├── component/
         │   └── GreetingCardElement.java   # Page object (TestBenchElement)
@@ -96,7 +114,7 @@ src/test/java/com/example/application/
 
 `MainViewIT` extends `BrowserTestBase`. Tests open the app in a real browser and interact through the page objects.
 
-`BrowserTestBase` enables JUnit 6 parallel execution automatically — multiple Chrome instances open concurrently. The concurrent browser limit defaults to 8, controlled by the `integration-test.concurrent-limit` POM property. Override at the Maven command line: `-Dintegration-test.concurrent-limit=N`. To override from an IDE run, add `-Dcom.vaadin.testbench.Parameters.testsInParallel=N` to the VM options of the run configuration.
+`BrowserTestBase` enables JUnit 6 parallel execution automatically — multiple Chrome instances open concurrently. The concurrent browser limit defaults to 8, controlled by the `integration-test.concurrent-limit` POM property. Override at the Maven command line: `-Dintegration-test.concurrent-limit=N`. To override from an IDE run, set `integration-test.concurrent-limit` in `it-test.properties` — `TestBenchParallelLimiter` reads it automatically before TestBench captures the value.
 
 TestBench page objects extend `TestBenchElement` and are annotated with `@Element("tag-name")`. They expose the same high-level API as the browserless page objects — same method names, different implementation. Internally they use `$(ElementType.class)` to query the live DOM.
 
@@ -104,9 +122,22 @@ The suite covers the same 7 cases as the browserless suite, plus 5 that require 
 
 #### Browser-Only Tests
 
-**Focus and selection** — four tests verify that the name field is focused on view open, that it is focused with its text selected after clicking the button or pressing Enter with a name entered, and that it is focused without selection after pressing Enter with an empty name. Browserless tests have no concept of browser focus or text selection.
+- **Focus and selection** — four tests verify that the name field is focused on view open, that it is focused with its text selected after clicking the button or pressing Enter with a name entered, and that it is focused without selection after pressing Enter with an empty name. Browserless tests have no concept of browser focus or text selection.
+- **Scroll visibility** — `greetButton_scrollsNewestCardIntoView` adds cards until the first card scrolls out of view (adapting to actual window size rather than a hardcoded count), then uses `waitUntil()` to confirm the newest card is in the visible area. Scroll position is checked via `TestBenchElement.getRect()`.
 
-**Scroll visibility** — `greetButton_scrollsNewestCardIntoView` adds cards until the first card scrolls out of view (adapting to actual window size rather than a hardcoded count), then uses `waitUntil()` to confirm the newest card is in the visible area. Scroll position is checked via `TestBenchElement.getRect()`.
+#### Non-Conflicting Deployment Port
+
+Running `mvn verify -Pit` while a development instance is already serving on 8080 would normally fail — the second Jetty cannot bind a port that is already in use. These IT tests deploy to port 9090 by default so that the test suite and a live dev instance can run at the same time.
+
+The port is controlled by the `it-deployment.port` POM property (default `9090`), which flows to three places: the Jetty plugin's `<httpConnector><port>` (the port Maven binds), Failsafe's `<systemPropertyVariables>` as the `deployment.port` system property (injected into the forked test JVM and read by both `ServerExtension` and `MainViewIT`), and `it-test.properties` via Maven resource filtering (read by `ServerExtension` on IDE runs, which then sets the `deployment.port` system property itself so `MainViewIT` can read it the same way in both environments). Override at the command line: `-Dit-deployment.port=N`.
+
+#### Shared Embedded Jetty — `ServerExtension`
+
+`ServerExtension` shims the Maven build lifecycle for IDE runs: `mvn verify -Pit` starts and stops Jetty automatically; this extension does the same when no server is detected, and reference-counts across concurrent test classes to prevent race conditions.
+
+#### JUnit SPI Hook for Early Parallelism Configuration — `TestBenchParallelLimiter`
+
+`TestBenchParallelLimiter` shims Failsafe's `<systemPropertyVariables>` for IDE runs: Maven injects the parallelism limit before the forked JVM starts; this SPI listener does the same before JUnit's executor is configured.
 
 ---
 
@@ -118,10 +149,19 @@ Both page object families follow the same structural conventions.
 
 Each page object class is divided into three sections:
 
+- **Browserless**
+
 ```java
 // PUBLIC API                          — methods called directly by tests
-// INTERNAL component tester accessors — private methods that locate and wrap components (browserless)
-// INTERNAL element accessors          — private methods that locate DOM elements (TestBench)
+// INTERNAL component tester accessors — private methods that locate and wrap components
+// INTERNAL helpers                    — private methods that combine accessors into operations
+```
+
+- **TestBench**
+
+```java
+// PUBLIC API                          — methods called directly by tests
+// INTERNAL element accessors          — private methods that locate DOM elements
 // INTERNAL helpers                    — private methods that combine accessors into operations
 ```
 
@@ -165,7 +205,7 @@ This matters for correctness: `TextFieldElement.setValue()` in TestBench leaves 
 
 ### Stable element location
 
-Components are always located by a user-visible identifier rather than by type alone:
+Components are located by type combined with their own attributes, rarely by type alone:
 
 ```java
 // Browserless
@@ -200,7 +240,7 @@ Visibility relative to the scroller is a concern of the view, not the card. `isC
 |---|---|---|
 | Page object base | `ComponentTester<T>` | `TestBenchElement` |
 | Internal accessor types | `TextFieldTester`, `ButtonTester`, `SpanTester`, `DivTester` | `TextFieldElement`, `ButtonElement`, `SpanElement`, `DivElement` |
-| Public method names | `greet()`, `setName()`, `getMessage()`, `getTimestamp()`, `close()`, … | same |
+| Public method names | `greet()`, `setName()`, `getMessage()`, `getTimestamp()`, `close()`, … | same core methods, plus browser-only additions |
 | Test cases | 7 shared cases | 7 shared + 5 browser-only |
 | Element location | `find().withCaption()/withText()` | `$().withCaption()/withText()` |
 | Run with | `mvn test` | `mvn verify -Pit` |
@@ -208,17 +248,21 @@ Visibility relative to the scroller is a concern of the view, not the card. `isC
 | Needs server | no | yes (Jetty on 9090) |
 | Speed | ~milliseconds | ~seconds |
 
+---
+
 ## Key Differences
 
 **Browserless tests** run entirely server-side. They are fast, reliable (no Selenium timing issues), and run in CI without a display. They verify server-side logic — component state, event handling, listener behavior.
 
 **TestBench e2e tests** drive a real browser. They are slower but verify the full stack — HTML rendering, CSS, web component behavior, and browser APIs like scroll position. Some behaviors (smooth scrolling, focus, hover states) can only be tested this way.
 
-Both approaches use page objects with the same API, so the shared test cases are structurally identical — compare `MainViewTest` and `MainViewIT` side by side to see this clearly.
+Both approaches use page objects with the same core API, so the shared test cases are structurally identical — compare `MainViewTest` and `MainViewIT` side by side to see this clearly.
+
+---
 
 ## Test Timings
 
-These are IntelliJ's per-test elapsed times. The class-level totals are sums of those per-test numbers, not wall-clock — the suites actually run in parallel, so `mvn test` finishes all 14 unit tests in about 1 second and `mvn verify -Pit` finishes the 12 IT tests in about 9 seconds.
+These are IntelliJ's per-test elapsed times. The class-level totals are sums of those per-test numbers, not wall-clock — tests within each suite run concurrently, so `mvn test` finishes all 14 unit tests in about 1 second and `mvn verify -Pit` finishes the 12 IT tests in about 9 seconds.
 
 **Plain JUnit** (`GreetingTest`, `GreetServiceTest`) is essentially free — 46 ms total for 7 tests. No Vaadin machinery, just constructing data objects.
 
